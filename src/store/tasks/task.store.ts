@@ -1,6 +1,8 @@
 import { StateCreator, create } from "zustand";
 import { v4 as uuidv4 } from "uuid";
-import { devtools } from 'zustand/middleware';
+import { devtools, persist } from 'zustand/middleware';
+import { immer } from 'zustand/middleware/immer';
+// import { produce } from "immer";
 import type { Task, TaskStatus } from "../../interfaces";
 
 interface TaskState {
@@ -14,7 +16,7 @@ interface TaskState {
     onTaskDrop: (status: TaskStatus) => void;
 }
 
-const storeApi: StateCreator<TaskState> = (set, get) => ({
+const storeApi: StateCreator<TaskState, [["zustand/immer", never]]> = (set, get) => ({
     draggingTaskId: undefined,
     tasks: {
         'ABC-1': { id: 'ABC-1', title: 'Task 1', status: 'OPEN' },
@@ -27,12 +29,23 @@ const storeApi: StateCreator<TaskState> = (set, get) => ({
     },
     addTask: (title: string, status: TaskStatus) => {
         const newTask = { id: uuidv4(), title, status };
-        set((state) => ({
-            tasks: {
-                ...state.tasks,
-                [newTask.id]: newTask,
-            }
-        }));
+
+        set((state) => {
+            state.tasks[newTask.id] = newTask;
+        })
+
+        //? Requiere npm install immer
+        // set(produce((state: TaskState) => {
+        //     state.tasks[newTask.id] = newTask;
+        // }));
+
+        //? Forma nativa zustand
+        // set((state) => ({
+        //     tasks: {
+        //         ...state.tasks,
+        //         [newTask.id]: newTask,
+        //     }
+        // }));
     },
     setDraggingTaskId: (taskId: string) => {
         set({ draggingTaskId: taskId });
@@ -41,14 +54,20 @@ const storeApi: StateCreator<TaskState> = (set, get) => ({
         set({ draggingTaskId: undefined });
     },
     changeTaskStatus: (taskId: string, status: TaskStatus) => {
-        const task = get().tasks[taskId];
-        task.status = status;
-        set((state) => ({
-            tasks: {
-                ...state.tasks,
-                [taskId]: task,
-            }
-        }));
+        // const task = get().tasks[taskId];
+        // task.status = status;
+        set((state) => {
+            state.tasks[taskId] = {
+                ...state.tasks[taskId],
+                status,
+            };
+        })
+        // set((state) => ({
+        //     tasks: {
+        //         ...state.tasks,
+        //         [taskId]: task,
+        //     }
+        // }));
     },
     onTaskDrop: (status: TaskStatus) => {
         const draggingTaskId = get().draggingTaskId;
@@ -60,5 +79,10 @@ const storeApi: StateCreator<TaskState> = (set, get) => ({
 });
 
 export const useTaskStore = create<TaskState>()(
-    devtools(storeApi)
+    devtools(
+        persist(
+            immer(storeApi),
+            { name: 'task-store' }
+        )
+    )
 );
