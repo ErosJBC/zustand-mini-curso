@@ -1,7 +1,23 @@
-
-import { Outlet } from 'react-router-dom';
+import { Navigate, Outlet } from 'react-router-dom';
+import { useAuthStore } from '../store';
 
 export const AuthLayout = () => {
+    const authStatus = useAuthStore(state => state.status);
+    const checkAuthStatus = useAuthStore(state => state.checkAuthStatus);
+
+    if (authStatus === 'checking') {
+        checkAuthStatus();
+        return (
+            <div className="flex items-center justify-center w-screen h-screen">
+                <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-indigo-500"></div>
+            </div>
+        );
+    }
+
+    if (authStatus === 'authenticated') {
+        return <Navigate to="/dashboard" />
+    }
+
     return (
         <div className="bg-gray-100 flex justify-center items-center h-screen">
             <div className="w-1/2 h-screen hidden lg:flex lg:flex-col items-center justify-center bg-indigo-700">
